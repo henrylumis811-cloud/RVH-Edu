@@ -1,0 +1,112 @@
+name: RVH Edu Direct-Install Release APK
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-apk:
+    name: Test and build signed release APK (direct install)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
+
+      - name: Install Android SDK components
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+
+      - name: Configure persistent APK signing identity
+        env:
+          RVH_SIGNING_KEYSTORE_BASE64: ${{ secrets.RVH_SIGNING_KEYSTORE_BASE64 }}
+          RVH_SIGNING_STORE_PASSWORD: ${{ secrets.RVH_SIGNING_STORE_PASSWORD }}
+          RVH_SIGNING_KEY_ALIAS: ${{ secrets.RVH_SIGNING_KEY_ALIAS }}
+          RVH_SIGNING_KEY_PASSWORD: ${{ secrets.RVH_SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in RVH_SIGNING_KEYSTORE_BASE64 RVH_SIGNING_STORE_PASSWORD RVH_SIGNING_KEY_ALIAS RVH_SIGNING_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name. Configure the four RVH signing secrets before building an installable APK."
+              exit 1
+            fi
+          done
+          mkdir -p "$RUNNER_TEMP/rvh-signing"
+          echo "$RVH_SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/rvh-signing/rvh-release.jks"
+          test -s "$RUNNER_TEMP/rvh-signing/rvh-release.jks"
+          echo "RVH_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/rvh-signing/rvh-release.jks" >> "$GITHUB_ENV"
+          echo "RVH_SIGNING_STORE_PASSWORD=$RVH_SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "RVH_SIGNING_KEY_ALIAS=$RVH_SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "RVH_SIGNING_KEY_PASSWORD=$RVH_SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Run backup and restore regression suite
+        run: python3 tools/run_backup_regression_suite.py
+
+      - name: Check migration safety contracts
+        run: python3 tools/check_legacy_migration_safety.py
+
+      - name: Check professional bulk mark entry UI and safety contracts
+        run: |
+          python3 tools/check_v193_pin_recovery_security.py
+          python3 tools/check_v195_support_contacts.py
+          python3 tools/check_recovery_admin_app.py
+          python3 tools/check_v192_report_positions_and_subject_analysis.py
+          python3 tools/check_v191_community_links.py
+          python3 tools/check_v190_quick_grading_theme.py
+          python3 tools/check_v189_bulk_marks_professional_ui.py
+          python3 tools/check_v188_bulk_mark_layout.py
+          python3 tools/check_ui_mark_entry_polish.py
+          python3 tools/check_bulk_marks_recovery.py
+          python3 tools/check_bulk_marks_unsaved_guard.py
+          python3 tools/check_v187_historical_analytics_and_error_routing.py
+
+      - name: Run Android unit tests
+        run: gradle testDebugUnitTest --no-daemon
+
+      - name: Build signed release APK
+        run: gradle assembleRelease --no-daemon
+
+      - name: Build signed recovery administrator APK
+        run: gradle :recovery-admin:assembleRelease --no-daemon
+
+      - name: Verify and stage APK
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -name '*.apk' -type f -print -quit)"
+          test -n "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          mkdir -p release-artifacts
+          cp "$APK" release-artifacts/RVHEdu-1.7.4-release.apk
+          ADMIN_APK="$(find recovery-admin/build/outputs/apk/release -name '*.apk' -type f -print -quit)"
+          test -n "$ADMIN_APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$ADMIN_APK"
+          cp "$ADMIN_APK" release-artifacts/RVHEdu-Recovery-Admin-1.0.1.apk
+          sha256sum release-artifacts/*.apk | tee release-artifacts/SHA256SUMS.txt
+          echo "Both signed direct-install APKs verified."
+
+      - name: Upload direct-install release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rvh-edu-and-recovery-admin-v1.7.4-build160
+          path: release-artifacts/*
+          if-no-files-found: error
+          retention-days: 30

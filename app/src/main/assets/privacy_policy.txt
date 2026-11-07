@@ -1,0 +1,26 @@
+RVH EDU PRIVACY POLICY
+Effective date: 31 October 2026
+Contact: henrylumis811@gmail.com
+
+RVH Edu is an offline-first school record and grading application.
+
+INFORMATION STORED ON YOUR DEVICE
+RVH Edu can store school details, learner details, enrolments, assessment marks, grading settings, academic history and other information you enter. These records are used to provide app features and are stored locally unless you choose to export, share or otherwise transmit them.
+
+FEEDBACK AND ANALYTICS
+The first release has no configured RVH-operated feedback server or audience-analytics endpoint. Custom audience check-ins are disabled. If you choose email or WhatsApp feedback, RVH Edu prepares a message and opens another app or browser; you review and send it yourself. The selected provider processes that message under its own policies. Do not include learner names, marks or confidential school records in feedback.
+
+BACKUPS AND EXPORTS
+RVH Edu provides user-initiated backup and restore. You choose where exported backups are saved. Backups may contain sensitive records; protect them and share only with authorised people. Android automatic backup is configured to exclude the app's private database, preferences and files.
+
+OFFLINE OPERATION AND UPDATES
+Core grading and recordkeeping are designed to work offline. The first release has no configured RVH-hosted update manifest or audience endpoint. External services you choose to open may process network information under their own policies.
+
+RETENTION AND DELETION
+Records remain in local app storage until you delete them, clear app data, uninstall the app or otherwise remove them. Exported backups are separate files and are not automatically deleted when app records are removed. Keep a verified backup before destructive actions.
+
+LEARNER INFORMATION AND SECURITY
+Schools and teachers are responsible for entering information they are authorised to manage. Use only necessary information, secure the device and protect exported backups. Do not assume a backup is encrypted unless the storage mechanism explicitly provides encryption.
+
+CHANGES AND CONTACT
+This policy may change as features or data practices change. For privacy questions, contact henrylumis811@gmail.com.
